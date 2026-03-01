@@ -62,8 +62,14 @@ from .offscreen import OffscreenContext
 # Camera controllers
 from .controllers import ArcBall, FirstPersonView
 
-# Utility functions
-from .utils import copy_cupy_array_into_slangpy_buffer
+# Utility functions and camera parameter types
+from .utils import (
+    copy_cupy_array_into_slangpy_buffer,
+    CameraIntrinsics,
+    ColorProjectionParameters,
+    DepthParameters,
+    DepthUnprojector,
+)
 
 __all__ = [
     # Version
@@ -91,6 +97,10 @@ __all__ = [
     "ArcBall",
     "FirstPersonView",
 
-    # Utils
+    # Utils & camera parameter types
     "copy_cupy_array_into_slangpy_buffer",
+    "CameraIntrinsics",
+    "ColorProjectionParameters",
+    "DepthParameters",
+    "DepthUnprojector",
 ]

@@ -19,6 +19,10 @@ def test_import_all_public_classes():
         FirstPersonView,
         OffscreenContext,
         copy_cupy_array_into_slangpy_buffer,
+        CameraIntrinsics,
+        ColorProjectionParameters,
+        DepthParameters,
+        DepthUnprojector,
     )
     assert callable(SlangWindow)
     assert callable(Pointcloud)
@@ -32,6 +36,10 @@ def test_import_all_public_classes():
     assert callable(FirstPersonView)
     assert callable(OffscreenContext)
     assert callable(copy_cupy_array_into_slangpy_buffer)
+    assert callable(CameraIntrinsics)
+    assert callable(ColorProjectionParameters)
+    assert callable(DepthParameters)
+    assert callable(DepthUnprojector)
 
 
 def test_version():
