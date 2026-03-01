@@ -296,9 +296,9 @@ vulkaninfo  # Verify Vulkan
 
 ## License
 
-This code is derived from the Holohub TCN project and maintains the same license.
+This code is derived from the TCN project and maintains the same license.
 
 ## Authors
 
-- Original implementation: Holohub TCN team
+- Original implementation: Ulrich Eck, TUM
 - Standalone extraction: 2026
