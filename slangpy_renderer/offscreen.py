@@ -86,6 +86,7 @@ class OffscreenContext:
         height: int = 256,
         enable_cuda_interop: bool = False,
         assets_path: str = None,
+        device_id: int = 0,
     ):
         """
         Initialize the offscreen rendering context.
@@ -95,6 +96,7 @@ class OffscreenContext:
             height: Render target height in pixels.
             enable_cuda_interop: If True, set up CUDA/Vulkan interop (requires CuPy).
             assets_path: Path to shader/model assets (defaults to package assets).
+            device_id: Cuda device id (defaults to 0)
         """
         self.width = width
         self.height = height
@@ -128,7 +130,7 @@ class OffscreenContext:
                     "CuPy is required for CUDA interop. "
                     "Install it with: pip install slangpy-renderer[cuda]"
                 )
-            with cp.cuda.Device(0):
+            with cp.cuda.Device(device_id):
                 _ = cp.zeros((1,), dtype=cp.uint8)
                 device_handle = spy.get_cuda_current_context_native_handles()
             device_kwargs["enable_cuda_interop"] = True

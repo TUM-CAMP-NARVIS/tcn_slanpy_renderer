@@ -65,7 +65,8 @@ class SlangWindow:
                  title: str,
                  resizeable: bool = True,
                  close_callback: Callable = None,
-                 assets_path: str = None):
+                 assets_path: str = None,
+                 device_id: int = 0):
         """
         Initialize the rendering window.
 
@@ -76,6 +77,7 @@ class SlangWindow:
             resizeable: Whether window can be resized
             close_callback: Callback function when window closes
             assets_path: Path to shader/model assets (defaults to package assets)
+            device_id: Cuda device id (defaults to 0)
         """
         self.ui = None
         self.close_callback = close_callback
@@ -97,7 +99,7 @@ class SlangWindow:
                 "CuPy is required for SlangWindow (CUDA/Vulkan interop). "
                 "Install it with: pip install slangpy-renderer[cuda]"
             )
-        with cp.cuda.Device(0):
+        with cp.cuda.Device(device_id):
             _ = cp.zeros((1,), dtype=cp.uint8)  # forces context creation if not existent
             device_handle = spy.get_cuda_current_context_native_handles()
 

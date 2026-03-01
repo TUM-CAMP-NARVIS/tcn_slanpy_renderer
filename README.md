@@ -1,6 +1,6 @@
 # Slangpy Renderer - Standalone 3D Rendering Library
 
-A standalone Python library for real-time 3D rendering using Slangpy (Vulkan backend) with CUDA interoperability. This library has been extracted from the Holoscan TCN rendering pipeline to provide a clean, reusable rendering solution.
+A standalone Python library for real-time 3D rendering using Slangpy (Vulkan backend) with CUDA interoperability. This library has been extracted from the TCN rendering pipeline to provide a clean, reusable rendering solution.
 
 ## Features
 

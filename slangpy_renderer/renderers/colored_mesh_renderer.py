@@ -37,6 +37,7 @@ class ColoredMeshRenderer:
                 vertex_streams=[{"stride": 12}, {"stride": 12}],
             ),
             depth_stencil={
+                "format": spy.Format.d32_float,
                 "depth_test_enable": True,
                 "depth_write_enable": True,
                 "depth_func": spy.ComparisonFunc.less,

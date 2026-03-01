@@ -47,6 +47,7 @@ class MeshRenderer:
                 "multisample_enable": False,
             },
             depth_stencil={
+                "format": spy.Format.d32_float,
                 "depth_test_enable": True,
                 "depth_write_enable": True,
                 "depth_func": spy.ComparisonFunc.less,
