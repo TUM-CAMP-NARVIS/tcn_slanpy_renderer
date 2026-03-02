@@ -914,3 +914,71 @@ class TestColorProjection:
             f"Sampled colors are too dark (mean={mean_brightness:.1f}), "
             f"suggesting UV mapping is wrong"
         )
+
+
+# ---------------------------------------------------------------------------
+# Normal computation tests
+# ---------------------------------------------------------------------------
+
+
+class TestNormalComputation:
+    """Tests for compute_normals kernel via DepthUnprojector."""
+
+    def test_normal_buffer_exists(self, device):
+        """DepthUnprojector should expose a normal_buffer property."""
+        params = DepthParameters(
+            width=8,
+            height=8,
+            intrinsics=CameraIntrinsics(fx=100.0, fy=100.0, cx=4.0, cy=4.0),
+        )
+        unprojector = DepthUnprojector(device, params)
+        assert unprojector.normal_buffer is not None
+
+    def test_invalid_depth_gives_zero_normal(self, device):
+        """Points with zero depth should produce zero normals."""
+        params = DepthParameters(
+            width=8,
+            height=8,
+            intrinsics=CameraIntrinsics(fx=100.0, fy=100.0, cx=4.0, cy=4.0),
+        )
+        unprojector = DepthUnprojector(device, params)
+        depth_mm = np.zeros((8, 8), dtype=np.uint16)
+        unprojector.unproject(depth_mm)
+        normals = unprojector.normals_to_numpy()
+        np.testing.assert_allclose(normals, 0.0, atol=1e-6)
+
+    def test_flat_plane_normals(self, device):
+        """A flat plane perpendicular to the camera should have normals in +z direction."""
+        params = DepthParameters(
+            width=16,
+            height=16,
+            intrinsics=CameraIntrinsics(fx=100.0, fy=100.0, cx=8.0, cy=8.0),
+        )
+        unprojector = DepthUnprojector(device, params)
+        depth_mm = np.full((16, 16), 2000, dtype=np.uint16)
+        unprojector.unproject(depth_mm)
+        normals = unprojector.normals_to_numpy()
+        assert normals.shape == (16, 16, 3)
+        # Interior points should have normals approximately (0, 0, 1) — surface outward normal
+        # cross(right, down) for fronto-parallel: right=(+,0,0), down=(0,+,0) -> cross = (0,0,+)
+        interior = normals[2:-2, 2:-2]
+        valid = np.linalg.norm(interior, axis=-1) > 0.5
+        assert valid.all(), "All interior points should have valid normals"
+        norms = interior / np.linalg.norm(interior, axis=-1, keepdims=True)
+        np.testing.assert_allclose(norms[..., 0], 0.0, atol=0.02)
+        np.testing.assert_allclose(norms[..., 1], 0.0, atol=0.02)
+        np.testing.assert_allclose(norms[..., 2], 1.0, atol=0.02)
+
+    def test_normals_shape_matches_pointcloud(self, device):
+        """Normal buffer should have the same dimensions as position buffer."""
+        params = DepthParameters(
+            width=32,
+            height=24,
+            intrinsics=CameraIntrinsics(fx=200.0, fy=200.0, cx=16.0, cy=12.0),
+        )
+        unprojector = DepthUnprojector(device, params)
+        depth_mm = np.full((24, 32), 1500, dtype=np.uint16)
+        unprojector.unproject(depth_mm)
+        normals = unprojector.normals_to_numpy()
+        positions = unprojector.to_numpy()
+        assert normals.shape == positions.shape

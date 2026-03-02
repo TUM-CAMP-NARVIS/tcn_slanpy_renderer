@@ -37,6 +37,7 @@ uniform StructuredBuffer<float2> xy_table_in;         // XY table input (compute
 uniform Texture2D<uint> depth_texture;                // depth image input (r16_uint)
 uniform RWStructuredBuffer<float3> pointcloud;        // pointcloud output
 uniform RWStructuredBuffer<float2> texcoords;         // texcoord output (normalized UVs)
+uniform RWStructuredBuffer<float3> normals;            // normal output (compute_normals)
 
 // ============================================================================
 // Forward projection through full Brown-Conrady distortion model.
@@ -311,5 +312,120 @@ void compute_pointcloud(uint3 threadId : SV_DispatchThreadID)
     else
     {
         texcoords[idx] = float2(0.f, 0.f);
+    }
+}
+
+// ============================================================================
+// Kernel 3: Compute Normals from Structured Pointcloud Grid
+// Dispatched after compute_pointcloud. Computes per-pixel surface normals via
+// finite differences on the 3D position grid: cross(dx, dy) where dx and dy
+// are central differences (with one-sided fallback at boundaries/invalid pixels).
+// Convention: cross(right, down) produces +z for fronto-parallel surfaces.
+// ============================================================================
+
+[shader("compute")]
+[numthreads(16, 16, 1)]
+void compute_normals(uint3 threadId : SV_DispatchThreadID)
+{
+    uint px = threadId.x;
+    uint py = threadId.y;
+
+    if (px >= depth_params.width || py >= depth_params.height)
+        return;
+
+    uint idx = py * depth_params.width + px;
+    float3 center = pointcloud[idx];
+
+    // Invalid point — write zero normal
+    if (center.z == 0.f)
+    {
+        normals[idx] = float3(0.f, 0.f, 0.f);
+        return;
+    }
+
+    // --- Horizontal finite difference (dx) ---
+    bool has_left = false;
+    bool has_right = false;
+    float3 left_pt, right_pt;
+
+    if (px > 0)
+    {
+        left_pt = pointcloud[idx - 1];
+        has_left = (left_pt.z != 0.f);
+    }
+    if (px + 1 < depth_params.width)
+    {
+        right_pt = pointcloud[idx + 1];
+        has_right = (right_pt.z != 0.f);
+    }
+
+    float3 dx;
+    bool dx_valid = false;
+    if (has_left && has_right)
+    {
+        dx = (right_pt - left_pt) * 0.5f;
+        dx_valid = true;
+    }
+    else if (has_right)
+    {
+        dx = right_pt - center;
+        dx_valid = true;
+    }
+    else if (has_left)
+    {
+        dx = center - left_pt;
+        dx_valid = true;
+    }
+
+    // --- Vertical finite difference (dy) ---
+    bool has_up = false;
+    bool has_down = false;
+    float3 up_pt, down_pt;
+
+    if (py > 0)
+    {
+        up_pt = pointcloud[idx - depth_params.width];
+        has_up = (up_pt.z != 0.f);
+    }
+    if (py + 1 < depth_params.height)
+    {
+        down_pt = pointcloud[idx + depth_params.width];
+        has_down = (down_pt.z != 0.f);
+    }
+
+    float3 dy;
+    bool dy_valid = false;
+    if (has_up && has_down)
+    {
+        dy = (down_pt - up_pt) * 0.5f;
+        dy_valid = true;
+    }
+    else if (has_down)
+    {
+        dy = down_pt - center;
+        dy_valid = true;
+    }
+    else if (has_up)
+    {
+        dy = center - up_pt;
+        dy_valid = true;
+    }
+
+    if (!dx_valid || !dy_valid)
+    {
+        normals[idx] = float3(0.f, 0.f, 0.f);
+        return;
+    }
+
+    // cross(right, down) => outward normal (+z for fronto-parallel surfaces)
+    float3 n = cross(dx, dy);
+    float len = length(n);
+    if (len > 0.f)
+    {
+        normals[idx] = n / len;
+    }
+    else
+    {
+        normals[idx] = float3(0.f, 0.f, 0.f);
     }
 }

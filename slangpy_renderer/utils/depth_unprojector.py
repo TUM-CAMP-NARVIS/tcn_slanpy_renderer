@@ -277,6 +277,11 @@ class DepthUnprojector:
         )
         self.m_pc_kernel = device.create_compute_kernel(pc_program)
 
+        normals_program = device.load_program(
+            "depth_unproject.slang", ["compute_normals"]
+        )
+        self.m_normals_kernel = device.create_compute_kernel(normals_program)
+
         # --- Create GPU resources ---
 
         w, h = params.width, params.height
@@ -299,6 +304,13 @@ class DepthUnprojector:
         self.m_texcoord_buffer = device.create_buffer(
             element_count=w * h,
             struct_size=8,
+            usage=spy.BufferUsage.shader_resource | spy.BufferUsage.unordered_access,
+        )
+
+        # Normal output: float3 per pixel (12 bytes per element)
+        self.m_normal_buffer = device.create_buffer(
+            element_count=w * h,
+            struct_size=12,
             usage=spy.BufferUsage.shader_resource | spy.BufferUsage.unordered_access,
         )
 
@@ -350,6 +362,23 @@ class DepthUnprojector:
         self.m_device.submit_command_buffer(command_encoder.finish())
         self.m_device.wait()
 
+    def _dispatch_normals(self) -> None:
+        """Compute per-pixel surface normals from the structured pointcloud grid."""
+        w, h = self.m_params.width, self.m_params.height
+        groups_x = _group_count(w, _GROUP_SIZE)
+        groups_y = _group_count(h, _GROUP_SIZE)
+
+        command_encoder = self.m_device.create_command_encoder()
+        with command_encoder.begin_compute_pass() as pass_enc:
+            shader_obj = pass_enc.bind_pipeline(self.m_normals_kernel.pipeline)
+            cursor = spy.ShaderCursor(shader_obj)
+            _bind_depth_params(cursor.depth_params, self.m_params)
+            cursor.pointcloud = self.m_position_buffer
+            cursor.normals = self.m_normal_buffer
+            pass_enc.dispatch_compute(spy.uint3(groups_x, groups_y, 1))
+        self.m_device.submit_command_buffer(command_encoder.finish())
+        self.m_device.wait()
+
     def unproject(self, depth_image: np.ndarray) -> spy.Buffer:
         """
         Convert a uint16 depth image to a float3 pointcloud on the GPU.
@@ -378,6 +407,9 @@ class DepthUnprojector:
         # Dispatch pointcloud computation
         self._dispatch_pointcloud()
 
+        # Dispatch normal computation
+        self._dispatch_normals()
+
         return self.m_position_buffer
 
     @property
@@ -394,6 +426,11 @@ class DepthUnprojector:
     def texcoord_buffer(self) -> spy.Buffer:
         """The output texcoord buffer (stable reference, reused every frame)."""
         return self.m_texcoord_buffer
+
+    @property
+    def normal_buffer(self) -> spy.Buffer:
+        """The output normal buffer (stable reference, reused every frame)."""
+        return self.m_normal_buffer
 
     @property
     def num_points(self) -> int:
@@ -422,6 +459,18 @@ class DepthUnprojector:
         raw = self.m_texcoord_buffer.to_numpy()
         return raw.view(np.float32).reshape(
             self.m_params.height, self.m_params.width, 2
+        )
+
+    def normals_to_numpy(self) -> np.ndarray:
+        """
+        Read back the normal buffer as a numpy array.
+
+        Returns:
+            (H, W, 3) float32 numpy array of per-point normal vectors.
+        """
+        raw = self.m_normal_buffer.to_numpy()
+        return raw.view(np.float32).reshape(
+            self.m_params.height, self.m_params.width, 3
         )
 
     def xy_table_to_numpy(self) -> np.ndarray:
