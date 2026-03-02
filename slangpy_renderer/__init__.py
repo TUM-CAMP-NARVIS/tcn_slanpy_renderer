@@ -52,6 +52,7 @@ from .renderables import Renderable, Pointcloud, Mesh, ColoredMesh
 from .renderers import (
     PointcloudRenderer,
     PointcloudSpritesRenderer,
+    PointcloudSurfelRenderer,
     MeshRenderer,
     ColoredMeshRenderer
 )
@@ -87,6 +88,7 @@ __all__ = [
     # Renderers
     "PointcloudRenderer",
     "PointcloudSpritesRenderer",
+    "PointcloudSurfelRenderer",
     "MeshRenderer",
     "ColoredMeshRenderer",
 
