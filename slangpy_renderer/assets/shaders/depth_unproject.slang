@@ -302,10 +302,26 @@ void compute_pointcloud(uint3 threadId : SV_DispatchThreadID)
 
         if (proj.valid)
         {
-            texcoords[idx] = proj.uv / float2((float)color_params.width, (float)color_params.height);
+            float2 uv = proj.uv / float2((float)color_params.width, (float)color_params.height);
+
+            // Invalidate points that project outside the color image.
+            // This happens when the depth camera's FoV is wider than the color
+            // camera's — edge pixels have no corresponding color data.
+            if (uv.x < 0.f || uv.x > 1.f || uv.y < 0.f || uv.y > 1.f)
+            {
+                pointcloud[idx] = float3(0.f, 0.f, 0.f);
+                texcoords[idx] = float2(0.f, 0.f);
+            }
+            else
+            {
+                texcoords[idx] = uv;
+            }
         }
         else
         {
+            // Projection failed (outside distortion model radius).
+            // Invalidate the point entirely.
+            pointcloud[idx] = float3(0.f, 0.f, 0.f);
             texcoords[idx] = float2(0.f, 0.f);
         }
     }

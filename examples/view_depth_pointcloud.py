@@ -167,7 +167,7 @@ def main(argv: list[str] | None = None) -> None:
     rgba[:, :, 3] = 255
 
     color_texture = device.create_texture(
-        format=spy.Format.rgba8_unorm,
+        format=spy.Format.rgba8_unorm_srgb,
         width=cw,
         height=ch,
         usage=spy.TextureUsage.shader_resource,

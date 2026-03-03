@@ -28,7 +28,11 @@ class PointcloudSurfelRenderer:
             ["vertex_main", "geometry_main", "fragment_main"],
         )
 
-        self.sampler = device.create_sampler()
+        self.sampler = device.create_sampler(
+            min_filter=spy.TextureFilteringMode.point,
+            mag_filter=spy.TextureFilteringMode.point,
+            mip_filter=spy.TextureFilteringMode.point,
+        )
 
         self.pipeline = device.create_render_pipeline(
             program=self.program,
